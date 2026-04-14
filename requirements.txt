@@ -1,0 +1,38 @@
+# Data manipulation
+numpy
+pandas
+scipy
+
+# Visualization
+matplotlib
+seaborn
+plotly
+
+# ML
+scikit-learn
+xgboost
+lightgbm
+imbalanced-learn
+
+# DL
+torch
+torchvision
+
+# Preprocessing / Feature engineering
+category-encoders
+feature-engine
+
+# Model persistence
+joblib
+
+# Jupyter
+notebook
+ipykernel
+
+# Evaluation / reporting
+shap
+yellowbrick
+
+# Utilities
+tqdm
+python-dotenv
