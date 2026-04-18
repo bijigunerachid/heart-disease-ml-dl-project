@@ -488,15 +488,25 @@ def build_raw_df(inputs: dict[str, Any]) -> pd.DataFrame:
     age = float(inputs.get("age", 1) or 1)
     if age <= 0: raise ValueError(f"Âge invalide : {age}")
     
-    # Créer le DataFrame
-    df = pd.DataFrame([inputs])
+    # Forcer les types AVANT de créer le DataFrame
+    # (pour éviter que pandas inère les types automatiquement)
+    inputs_safe = dict(inputs)  # copie
     
-    # IMPORTANT : Forcer les colonnes OneHotEncoded à être des STRINGS
-    # Cela évite : "Invalid value '1' for dtype 'str'. got 'int64' instead"
+    # S'ASSURER que les colonnes OneHotEncoded sont des STRINGS **IMMÉDIATEMENT**
     ohe_cols = ["cp", "thal", "dataset"]
     for col in ohe_cols:
-        if col in df.columns:
-            df[col] = df[col].fillna("missing").astype(str)
+        if col in inputs_safe:
+            val = inputs_safe[col]
+            # Convertir en string si ce n'est pas None/NaN
+            if pd.notna(val):
+                inputs_safe[col] = str(val)
+            else:
+                inputs_safe[col] = "missing"
+    
+    # Créer le DataFrame MAINTENANT avec les types forcés
+    df = pd.DataFrame([inputs_safe])
+    
+    logger.debug(f"build_raw_df types après création : {df.dtypes.to_dict()}")
     
     # Traiter les valeurs zéro
     if pd.notna(df.at[0, "chol"]) and float(df.at[0, "chol"]) == 0:
@@ -510,6 +520,8 @@ def build_raw_df(inputs: dict[str, Any]) -> pd.DataFrame:
     df["thal_missing"] = df["thal"].isna().astype(np.int8)
     df["chol_per_age"] = pd.to_numeric(df["chol"], errors="coerce") / age
     df["thalch_ratio"] = pd.to_numeric(df["thalch"], errors="coerce") / max(220.0 - age, 1.0)
+    
+    logger.debug(f"build_raw_df final shape: {df.shape}, cols: {list(df.columns)}")
     return df
 
 
