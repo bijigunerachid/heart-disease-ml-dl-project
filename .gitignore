@@ -38,6 +38,7 @@ models/dl/*.keras
 reports/figures/*.png
 reports/figures/*.jpg
 reports/figures/*.svg
+powerbi/
 
 # OS
 .DS_Store
