@@ -489,24 +489,29 @@ def build_raw_df(inputs: dict[str, Any]) -> pd.DataFrame:
     if age <= 0: raise ValueError(f"Âge invalide : {age}")
     
     # Forcer les types AVANT de créer le DataFrame
-    # (pour éviter que pandas inère les types automatiquement)
-    inputs_safe = dict(inputs)  # copie
+    # (évite que pandas inère les types automatiquement)
+    inputs_safe = dict(inputs)
     
     # S'ASSURER que les colonnes OneHotEncoded sont des STRINGS **IMMÉDIATEMENT**
     ohe_cols = ["cp", "thal", "dataset"]
     for col in ohe_cols:
         if col in inputs_safe:
             val = inputs_safe[col]
-            # Convertir en string si ce n'est pas None/NaN
-            if pd.notna(val):
-                inputs_safe[col] = str(val)
-            else:
+            # Forcer en string
+            if val is None or (isinstance(val, float) and np.isnan(val)):
                 inputs_safe[col] = "missing"
+            else:
+                inputs_safe[col] = str(val).strip()
     
-    # Créer le DataFrame MAINTENANT avec les types forcés
+    # Créer DataFrame avec types explicites
     df = pd.DataFrame([inputs_safe])
     
-    logger.debug(f"build_raw_df types après création : {df.dtypes.to_dict()}")
+    # FORCER les types des colonnes OHE à 'object' (string)
+    for col in ohe_cols:
+        if col in df.columns:
+            df[col] = df[col].astype('object').astype(str)
+    
+    logger.debug(f"[build_raw_df] OHE cols dtypes: {[(col, df[col].dtype) for col in ohe_cols]}")
     
     # Traiter les valeurs zéro
     if pd.notna(df.at[0, "chol"]) and float(df.at[0, "chol"]) == 0:
@@ -521,7 +526,7 @@ def build_raw_df(inputs: dict[str, Any]) -> pd.DataFrame:
     df["chol_per_age"] = pd.to_numeric(df["chol"], errors="coerce") / age
     df["thalch_ratio"] = pd.to_numeric(df["thalch"], errors="coerce") / max(220.0 - age, 1.0)
     
-    logger.debug(f"build_raw_df final shape: {df.shape}, cols: {list(df.columns)}")
+    logger.debug(f"[build_raw_df] Final df shape: {df.shape}, dtypes: {df.dtypes.to_dict()}")
     return df
 
 
