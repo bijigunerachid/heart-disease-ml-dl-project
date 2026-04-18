@@ -547,12 +547,24 @@ def apply_preprocessing(raw_df: pd.DataFrame, le_encoders: dict, preprocessor: A
     for col in _LBL_COLS:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     
-    # 3. S'ASSURER que les colonnes OneHotEncoded restent des STRINGS
-    #    (double vérification après build_raw_df)
+    # 3. FORCE ABSOLUE : OneHotEncoder a un historique strict du dtype
+    #    → créer une copie NOUVELLE avec types explicites
     ohe_cols = ["cp", "thal", "dataset"]
+    
+    # Créer un dict pour reconstruire le DataFrame
+    df_dict = df.to_dict('list')
+    
+    # Convertir TOUTES les colonnes OHE en strings AVANT de recréer le DataFrame
     for col in ohe_cols:
-        if col in df.columns and df[col].dtype != object:
-            df[col] = df[col].fillna("missing").astype(str)
+        if col in df_dict:
+            # Forcer chaque valeur en string
+            df_dict[col] = [str(v) if pd.notna(v) and v != 'nan' else 'missing' 
+                           for v in df_dict[col]]
+    
+    # Recréer le DataFrame depuis zéro
+    df = pd.DataFrame(df_dict)
+    
+    logger.debug(f"[apply_preprocessing] OHE dtypes after force: {[(c, df[c].dtype) for c in ohe_cols if c in df.columns]}")
     
     return preprocessor.transform(df)
 
