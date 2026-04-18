@@ -502,6 +502,8 @@ def build_raw_df(inputs: dict[str, Any]) -> pd.DataFrame:
 
 def apply_preprocessing(raw_df: pd.DataFrame, le_encoders: dict, preprocessor: Any) -> np.ndarray:
     df = raw_df.copy()
+    
+    # 1. Encoder les colonnes label (sex, restecg, slope)
     for col in _LBL_COLS:
         if col not in le_encoders: raise KeyError(f"LabelEncoder manquant : '{col}'")
         le  = le_encoders[col]
@@ -510,8 +512,19 @@ def apply_preprocessing(raw_df: pd.DataFrame, le_encoders: dict, preprocessor: A
         if val not in set(le.classes_):
             val = le.classes_[0]
         df.at[0, col] = le.transform([val])[0]
+    
+    # 2. Convertir les colonnes label en numérique
     for col in _LBL_COLS:
         df[col] = pd.to_numeric(df[col], errors="coerce")
+    
+    # 3. Assurer que les colonnes OneHotEncoded sont des STRINGS
+    #    (le OneHotEncoder attend des strings, pas des int64)
+    ohe_cols = ["cp", "thal", "dataset"]
+    for col in ohe_cols:
+        if col in df.columns:
+            # Convertir en string, gérer les valeurs manquantes
+            df[col] = df[col].fillna("missing").astype(str)
+    
     return preprocessor.transform(df)
 
 
