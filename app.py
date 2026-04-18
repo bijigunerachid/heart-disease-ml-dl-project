@@ -428,6 +428,37 @@ h3 { font-size: 1.1rem !important; font-weight: 600 !important; }
 # ══════════════════════════════════════════════════════════════════════════════
 # ML
 # ══════════════════════════════════════════════════════════════════════════════
+# WRAPPER POUR LE PREPROCESSOR — Force les types avant transform
+# ══════════════════════════════════════════════════════════════════════════════
+class SafePreprocessorWrapper:
+    """Wrapper qui force les types des colonnes OHE avant le transform"""
+    def __init__(self, preprocessor):
+        self.preprocessor = preprocessor
+    
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        """Transform avec conversion de type stricte pour OHE colonnes"""
+        X = X.copy()
+        
+        # Forcer les types pour les colonnes OneHotEncoded
+        ohe_cols = ["cp", "thal", "dataset"]
+        for col in ohe_cols:
+            if col in X.columns:
+                # Convertir en string, gérer les NaN
+                X[col] = X[col].astype(str)
+                X.loc[X[col].isin(['nan', 'None', '<NA>', 'NaN']), col] = 'missing'
+        
+        # Appeler le preprocessor original
+        return self.preprocessor.transform(X)
+    
+    def fit_transform(self, X: pd.DataFrame, y=None) -> np.ndarray:
+        """Fit + transform (si nécessaire)"""
+        return self.preprocessor.fit_transform(X, y)
+    
+    def get_feature_names_out(self, input_features=None):
+        """Passer à travers la méthode get_feature_names_out"""
+        return self.preprocessor.get_feature_names_out(input_features)
+
+
 @st.cache_resource(show_spinner=False)
 def load_artifacts() -> tuple:
     required = {
@@ -450,6 +481,10 @@ def load_artifacts() -> tuple:
         raise TypeError(f"label_encoders doit être un dict : {type(le_encoders)}")
     if feat_names.ndim != 1 or len(feat_names) == 0:
         raise ValueError("feature_names doit être un tableau 1D non vide.")
+    
+    # WRAPPER le preprocessor pour forcer les types
+    preprocessor = SafePreprocessorWrapper(preprocessor)
+    
     return model, preprocessor, le_encoders, feat_names
 
 
@@ -535,7 +570,8 @@ def apply_preprocessing(raw_df: pd.DataFrame, le_encoders: dict, preprocessor: A
     
     # 1. Encoder les colonnes label (sex, restecg, slope)
     for col in _LBL_COLS:
-        if col not in le_encoders: raise KeyError(f"LabelEncoder manquant : '{col}'")
+        if col not in le_encoders: 
+            raise KeyError(f"LabelEncoder manquant : '{col}'")
         le  = le_encoders[col]
         raw = df.at[0, col]
         val = str(raw) if pd.notna(raw) else ""
@@ -547,26 +583,16 @@ def apply_preprocessing(raw_df: pd.DataFrame, le_encoders: dict, preprocessor: A
     for col in _LBL_COLS:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     
-    # 3. FORCE ABSOLUE : OneHotEncoder a un historique strict du dtype
-    #    → créer une copie NOUVELLE avec types explicites
-    ohe_cols = ["cp", "thal", "dataset"]
+    # 3. Le wrapper SafePreprocessorWrapper gère les conversions de type OHE
+    #    → pas besoin de faire la conversion ici
     
-    # Créer un dict pour reconstruire le DataFrame
-    df_dict = df.to_dict('list')
+    logger.debug(f"[apply_preprocessing] Input df dtypes: {df.dtypes.to_dict()}")
     
-    # Convertir TOUTES les colonnes OHE en strings AVANT de recréer le DataFrame
-    for col in ohe_cols:
-        if col in df_dict:
-            # Forcer chaque valeur en string
-            df_dict[col] = [str(v) if pd.notna(v) and v != 'nan' else 'missing' 
-                           for v in df_dict[col]]
+    # Transform (avec wrapper qui force les types)
+    X = preprocessor.transform(df)
     
-    # Recréer le DataFrame depuis zéro
-    df = pd.DataFrame(df_dict)
-    
-    logger.debug(f"[apply_preprocessing] OHE dtypes after force: {[(c, df[c].dtype) for c in ohe_cols if c in df.columns]}")
-    
-    return preprocessor.transform(df)
+    logger.debug(f"[apply_preprocessing] Output shape: {X.shape}")
+    return X
 
 
 def run_prediction(X: np.ndarray, model: Any) -> tuple[float, int]:
