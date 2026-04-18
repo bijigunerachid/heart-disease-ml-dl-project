@@ -521,77 +521,74 @@ def _validate_clinical_inputs(inputs: dict[str, Any]) -> list[str]:
 
 def build_raw_df(inputs: dict[str, Any]) -> pd.DataFrame:
     age = float(inputs.get("age", 1) or 1)
-    if age <= 0: raise ValueError(f"Âge invalide : {age}")
-    
-    # Forcer les types AVANT de créer le DataFrame
-    # (évite que pandas inère les types automatiquement)
-    inputs_safe = dict(inputs)
-    
-    # S'ASSURER que les colonnes OneHotEncoded sont des STRINGS **IMMÉDIATEMENT**
-    ohe_cols = ["cp", "thal", "dataset"]
-    for col in ohe_cols:
-        if col in inputs_safe:
-            val = inputs_safe[col]
-            # Forcer en string
-            if val is None or (isinstance(val, float) and np.isnan(val)):
-                inputs_safe[col] = "missing"
-            else:
-                inputs_safe[col] = str(val).strip()
-    
-    # Créer DataFrame avec types explicites
-    df = pd.DataFrame([inputs_safe])
-    
-    # FORCER les types des colonnes OHE à 'object' (string)
-    for col in ohe_cols:
+    if age <= 0:
+        raise ValueError(f"Âge invalide : {age}")
+
+    df = pd.DataFrame([inputs])
+
+    # 🔥 COLONNES CATEGORIELLES (TOUTES EN STRING)
+    cat_cols = [
+        "cp", "thal", "dataset",
+        "sex", "restecg", "slope"
+    ]
+
+    for col in cat_cols:
         if col in df.columns:
-            df[col] = df[col].astype('object').astype(str)
-    
-    logger.debug(f"[build_raw_df] OHE cols dtypes: {[(col, df[col].dtype) for col in ohe_cols]}")
-    
-    # Traiter les valeurs zéro
-    if pd.notna(df.at[0, "chol"]) and float(df.at[0, "chol"]) == 0:
-        df.at[0, "chol"] = np.nan
-    if pd.notna(df.at[0, "trestbps"]) and float(df.at[0, "trestbps"]) == 0:
-        df.at[0, "trestbps"] = np.nan
-    
-    # Feature engineering
-    df["oldpeak"]      = pd.to_numeric(df["oldpeak"], errors="coerce").clip(lower=0.0)
-    df["ca_missing"]   = df["ca"].isna().astype(np.int8)
-    df["thal_missing"] = df["thal"].isna().astype(np.int8)
-    df["chol_per_age"] = pd.to_numeric(df["chol"], errors="coerce") / age
-    df["thalch_ratio"] = pd.to_numeric(df["thalch"], errors="coerce") / max(220.0 - age, 1.0)
-    
-    logger.debug(f"[build_raw_df] Final df shape: {df.shape}, dtypes: {df.dtypes.to_dict()}")
+            df[col] = df[col].astype(str)
+
+    # 🔥 GESTION DES VALEURS MANQUANTES
+    df = df.replace(
+        ["nan", "None", "<NA>", None],
+        "missing"
+    )
+
+    # 🔥 NUMERIC SAFE
+    num_cols = ["age", "trestbps", "chol", "thalch", "oldpeak"]
+    for col in num_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # 🔥 FEATURE ENGINEERING
+    df["oldpeak"] = df["oldpeak"].clip(lower=0.0)
+
+    df["ca_missing"]   = df["ca"].isna().astype(int)
+    df["thal_missing"] = df["thal"].isna().astype(int)
+
+    df["chol_per_age"] = df["chol"] / age
+    df["thalch_ratio"] = df["thalch"] / max(220 - age, 1)
+
     return df
 
 
 def apply_preprocessing(raw_df: pd.DataFrame, le_encoders: dict, preprocessor: Any) -> np.ndarray:
     df = raw_df.copy()
-    
-    # 1. Encoder les colonnes label (sex, restecg, slope)
-    for col in _LBL_COLS:
-        if col not in le_encoders: 
-            raise KeyError(f"LabelEncoder manquant : '{col}'")
-        le  = le_encoders[col]
-        raw = df.at[0, col]
-        val = str(raw) if pd.notna(raw) else ""
-        if val not in set(le.classes_):
+
+    # 🔥 LABEL ENCODING SAFE
+    for col in ["sex", "restecg", "slope"]:
+        le = le_encoders[col]
+
+        val = str(df.at[0, col])
+
+        if val not in le.classes_:
             val = le.classes_[0]
+
         df.at[0, col] = le.transform([val])[0]
-    
-    # 2. Convertir les colonnes label en numérique
-    for col in _LBL_COLS:
+
+    # 🔥 FORCER NUMERIC POUR LABEL
+    for col in ["sex", "restecg", "slope"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
-    
-    # 3. Le wrapper SafePreprocessorWrapper gère les conversions de type OHE
-    #    → pas besoin de faire la conversion ici
-    
-    logger.debug(f"[apply_preprocessing] Input df dtypes: {df.dtypes.to_dict()}")
-    
-    # Transform (avec wrapper qui force les types)
+
+    # 🔥 FORCE TOUTES LES CATEGORIELLES EN STRING (ANTI BUG)
+    cat_cols = ["cp", "thal", "dataset"]
+    for col in cat_cols:
+        if col in df.columns:
+            df[col] = df[col].astype(str)
+
+    # 🔥 DEBUG (optionnel)
+    # st.write(df.dtypes)
+
     X = preprocessor.transform(df)
-    
-    logger.debug(f"[apply_preprocessing] Output shape: {X.shape}")
+
     return X
 
 
@@ -839,10 +836,12 @@ def page_prediction(model: Any, preprocessor: Any,
                                    ["asymptomatic","typical angina","atypical angina","non-anginal"])
             restecg = st.selectbox("ECG au repos",
                                    ["normal","lv hypertrophy","st-t abnormality"])
-            fbs     = st.radio("Glycémie à jeun > 120 mg/dL", options=[0,1],
-                               format_func=lambda x: "Oui" if x==1 else "Non", horizontal=True)
+            fbs = st.radio(
+    "Glycémie à jeun > 120 mg/dL",
+    options=["0", "1"]
+)
         with c2:
-            exang   = st.radio("Angine induite par l'effort", options=[0,1],
+            exang   = st.radio("Angine induite par l'effort", options=["0", "1"],
                                format_func=lambda x: "Oui" if x==1 else "Non", horizontal=True)
             oldpeak = st.number_input("Dépression ST à l'effort (mm)",
                                       min_value=0.0, max_value=10.0,
