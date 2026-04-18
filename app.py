@@ -487,11 +487,24 @@ def _validate_clinical_inputs(inputs: dict[str, Any]) -> list[str]:
 def build_raw_df(inputs: dict[str, Any]) -> pd.DataFrame:
     age = float(inputs.get("age", 1) or 1)
     if age <= 0: raise ValueError(f"Âge invalide : {age}")
+    
+    # Créer le DataFrame
     df = pd.DataFrame([inputs])
+    
+    # IMPORTANT : Forcer les colonnes OneHotEncoded à être des STRINGS
+    # Cela évite : "Invalid value '1' for dtype 'str'. got 'int64' instead"
+    ohe_cols = ["cp", "thal", "dataset"]
+    for col in ohe_cols:
+        if col in df.columns:
+            df[col] = df[col].fillna("missing").astype(str)
+    
+    # Traiter les valeurs zéro
     if pd.notna(df.at[0, "chol"]) and float(df.at[0, "chol"]) == 0:
         df.at[0, "chol"] = np.nan
     if pd.notna(df.at[0, "trestbps"]) and float(df.at[0, "trestbps"]) == 0:
         df.at[0, "trestbps"] = np.nan
+    
+    # Feature engineering
     df["oldpeak"]      = pd.to_numeric(df["oldpeak"], errors="coerce").clip(lower=0.0)
     df["ca_missing"]   = df["ca"].isna().astype(np.int8)
     df["thal_missing"] = df["thal"].isna().astype(np.int8)
@@ -517,12 +530,11 @@ def apply_preprocessing(raw_df: pd.DataFrame, le_encoders: dict, preprocessor: A
     for col in _LBL_COLS:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     
-    # 3. Assurer que les colonnes OneHotEncoded sont des STRINGS
-    #    (le OneHotEncoder attend des strings, pas des int64)
+    # 3. S'ASSURER que les colonnes OneHotEncoded restent des STRINGS
+    #    (double vérification après build_raw_df)
     ohe_cols = ["cp", "thal", "dataset"]
     for col in ohe_cols:
-        if col in df.columns:
-            # Convertir en string, gérer les valeurs manquantes
+        if col in df.columns and df[col].dtype != object:
             df[col] = df[col].fillna("missing").astype(str)
     
     return preprocessor.transform(df)
