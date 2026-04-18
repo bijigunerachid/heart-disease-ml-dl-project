@@ -26,17 +26,13 @@ data/processed/*.pkl
 data/processed/*.parquet
 !data/raw/
 
-# Models (ignore saved weights/binaries, but keep best models)
+# Models (ignore saved weights/binaries)
 models/ml/*.pkl
 models/ml/*.joblib
-!models/ml/best_*.joblib
-!models/ml/preprocessor.joblib
-!models/ml/label_encoders.joblib
 models/dl/*.h5
 models/dl/*.pt
 models/dl/*.pth
 models/dl/*.keras
-!models/dl/best_*.pt
 
 # Reports (ignore generated figures)
 reports/figures/*.png
