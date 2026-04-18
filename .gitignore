@@ -21,7 +21,7 @@ env/
 *.ipynb_checkpoints
 
 # Data (keep raw, ignore large processed files)
-
+data/processed/*.csv
 data/processed/*.pkl
 data/processed/*.parquet
 !data/raw/
