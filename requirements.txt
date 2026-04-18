@@ -1,3 +1,6 @@
+# Web Framework
+streamlit
+
 # Data manipulation
 numpy
 pandas
