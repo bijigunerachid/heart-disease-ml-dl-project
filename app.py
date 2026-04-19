@@ -443,8 +443,7 @@ class SafePreprocessorWrapper:
         ohe_cols = ["cp", "thal", "dataset"]
         for col in ohe_cols:
             if col in X.columns:
-                # Convertir en string, gérer les NaN
-                X[col] = X[col].astype(str)
+                X[col] = X[col].astype(object).astype(str)
                 X.loc[X[col].isin(['nan', 'None', '<NA>', 'NaN']), col] = 'missing'
         
         # Appeler le preprocessor original
@@ -526,34 +525,27 @@ def build_raw_df(inputs: dict[str, Any]) -> pd.DataFrame:
 
     df = pd.DataFrame([inputs])
 
-    # 🔥 COLONNES CATEGORIELLES (TOUTES EN STRING)
-    cat_cols = [
-        "cp", "thal", "dataset",
-        "sex", "restecg", "slope"
-    ]
+    # BUG FIX #1 : calculer les flags manquants AVANT la conversion string
+    # (après astype(str), None→"None" et isna() retourne toujours False)
+    df["ca_missing"]   = df["ca"].isna().astype(int)
+    df["thal_missing"] = df["thal"].isna().astype(int)
 
+    # Forcer object dtype pour éviter StringDtype (pandas 2.x Streamlit Cloud)
+    cat_cols = ["cp", "thal", "dataset", "sex", "restecg", "slope"]
     for col in cat_cols:
         if col in df.columns:
-            df[col] = df[col].astype(str)
+            df[col] = df[col].astype(object).astype(str)
 
-    # 🔥 GESTION DES VALEURS MANQUANTES
-    df = df.replace(
-        ["nan", "None", "<NA>", None],
-        "missing"
-    )
+    # Remplacer les valeurs manquantes en string
+    df = df.replace(["nan", "None", "<NA>", None, np.nan], "missing")
 
-    # 🔥 NUMERIC SAFE
+    # Colonnes numériques
     num_cols = ["age", "trestbps", "chol", "thalch", "oldpeak"]
     for col in num_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # 🔥 FEATURE ENGINEERING
     df["oldpeak"] = df["oldpeak"].clip(lower=0.0)
-
-    df["ca_missing"]   = df["ca"].isna().astype(int)
-    df["thal_missing"] = df["thal"].isna().astype(int)
-
     df["chol_per_age"] = df["chol"] / age
     df["thalch_ratio"] = df["thalch"] / max(220 - age, 1)
 
@@ -566,23 +558,22 @@ def apply_preprocessing(raw_df: pd.DataFrame, le_encoders: dict, preprocessor: A
     # 🔥 LABEL ENCODING SAFE
     for col in ["sex", "restecg", "slope"]:
         le = le_encoders[col]
-
         val = str(df.at[0, col])
-
         if val not in le.classes_:
             val = le.classes_[0]
-
-        df.at[0, col] = le.transform([val])[0]
+        encoded = int(le.transform([val])[0])
+        df[col] = df[col].astype(object)
+        df.at[0, col] = encoded
 
     # 🔥 FORCER NUMERIC POUR LABEL
     for col in ["sex", "restecg", "slope"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # 🔥 FORCE TOUTES LES CATEGORIELLES EN STRING (ANTI BUG)
+    # Forcer object dtype pour éviter StringDtype (pandas 2.x)
     cat_cols = ["cp", "thal", "dataset"]
     for col in cat_cols:
         if col in df.columns:
-            df[col] = df[col].astype(str)
+            df[col] = df[col].astype(object).astype(str)
 
     # 🔥 DEBUG (optionnel)
     # st.write(df.dtypes)
@@ -842,7 +833,7 @@ def page_prediction(model: Any, preprocessor: Any,
 )
         with c2:
             exang   = st.radio("Angine induite par l'effort", options=["0", "1"],
-                               format_func=lambda x: "Oui" if x==1 else "Non", horizontal=True)
+                               format_func=lambda x: "Oui" if x=="1" else "Non", horizontal=True)
             oldpeak = st.number_input("Dépression ST à l'effort (mm)",
                                       min_value=0.0, max_value=10.0,
                                       value=1.0, step=0.1, format="%.1f")
