@@ -525,21 +525,20 @@ def build_raw_df(inputs: dict[str, Any]) -> pd.DataFrame:
 
     df = pd.DataFrame([inputs])
 
-    # BUG FIX #1 : calculer les flags manquants AVANT la conversion string
+    # Calculer les flags manquants AVANT la conversion string
     # (après astype(str), None→"None" et isna() retourne toujours False)
     df["ca_missing"]   = df["ca"].isna().astype(int)
     df["thal_missing"] = df["thal"].isna().astype(int)
 
-    # Forcer object dtype pour éviter StringDtype (pandas 2.x Streamlit Cloud)
+    # Colonnes catégorielles : forcer object dtype (évite StringDtype pandas 2.x)
+    # puis remplacer les valeurs manquantes par "missing" UNIQUEMENT pour ces colonnes
     cat_cols = ["cp", "thal", "dataset", "sex", "restecg", "slope"]
     for col in cat_cols:
         if col in df.columns:
             df[col] = df[col].astype(object).astype(str)
+            df[col] = df[col].replace(["nan", "None", "<NA>", "None"], "missing")
 
-    # Remplacer les valeurs manquantes en string
-    df = df.replace(["nan", "None", "<NA>", None, np.nan], "missing")
-
-    # Colonnes numériques
+    # Colonnes numériques : laisser NaN intact pour SimpleImputer(strategy='median')
     num_cols = ["age", "trestbps", "chol", "thalch", "oldpeak"]
     for col in num_cols:
         if col in df.columns:
