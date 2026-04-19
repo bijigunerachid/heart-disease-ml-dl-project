@@ -28,7 +28,7 @@ data/processed/*.parquet
 
 # Models (ignore saved weights/binaries)
 models/ml/*.pkl
-models/ml/*.joblib
+# models/ml/*.joblib  ← décommenté pour Streamlit Cloud
 models/dl/*.h5
 models/dl/*.pt
 models/dl/*.pth
