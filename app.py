@@ -61,8 +61,8 @@ _RGPD_EXCLUDED_FIELDS: frozenset[str] = frozenset()
 st.set_page_config(
     page_title="CardioRisk AI",
     page_icon="🫀",
-    layout="wide",
-    initial_sidebar_state="expanded",
+    layout="centered",
+    initial_sidebar_state="collapsed",
 )
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -224,6 +224,7 @@ section[data-testid="stSidebar"] {
 [data-testid="block-container"] {
     padding: 2.2rem 2.8rem 4rem !important;
     max-width: 1180px !important;
+    margin: 0 auto !important;
 }
 
 /* ══ TYPOGRAPHIE ════════════════════════════════════════════════════════ */
@@ -420,6 +421,214 @@ h3 { font-size: 1.1rem !important; font-weight: 600 !important; }
 * { box-sizing: border-box; }
 [data-testid="stSidebar"] .stRadio label[data-baseweb="radio"] {
     transition: background .15s ease, padding-left .15s ease !important;
+}
+
+/* ══ RESPONSIVE DESIGN ════════════════════════════════════════════════════ */
+
+/* ── TABLET (768px and below) ── */
+@media (max-width: 768px) {
+    /* Sidebar becomes overlay/collapsible */
+    section[data-testid="stSidebar"] {
+        width: 280px !important;
+        min-width: 280px !important;
+        max-width: 280px !important;
+        position: fixed !important;
+        z-index: 1000 !important;
+    }
+
+    /* Main content adjustments */
+    [data-testid="block-container"] {
+        padding: 1.5rem 1.2rem 3rem !important;
+        max-width: none !important;
+        margin-left: 0 !important;
+    }
+
+    /* Hide sidebar by default on mobile, show when expanded */
+    [data-testid="stSidebar"][aria-expanded="false"] {
+        transform: translateX(-100%) !important;
+    }
+
+    [data-testid="stSidebar"][aria-expanded="true"] {
+        transform: translateX(0) !important;
+    }
+
+    /* Page header adjustments */
+    .page-header {
+        padding: 1.8rem 0 1.2rem;
+        text-align: center;
+    }
+    .page-header h1 {
+        font-size: 1.8rem !important;
+    }
+    .page-header-sub {
+        font-size: .9rem !important;
+        max-width: none !important;
+    }
+
+    /* Stack columns vertically */
+    [data-testid="column"] {
+        width: 100% !important;
+        margin-bottom: 1rem !important;
+        flex: none !important;
+    }
+
+    /* Stat cards in single column */
+    .stat-card {
+        margin-bottom: 1rem;
+    }
+
+    /* Form adjustments */
+    [data-testid="stForm"] {
+        padding: 1.2rem !important;
+    }
+
+    /* Result cards */
+    .result-card {
+        padding: 1.5rem 1.2rem;
+    }
+    .result-prob {
+        font-size: 2.5rem !important;
+    }
+
+    /* Charts and plots */
+    [data-testid="stPlotlyChart"] {
+        width: 100% !important;
+    }
+
+    /* Disclaimer */
+    .disclaimer {
+        padding: 12px 16px;
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    .disclaimer-icon {
+        align-self: center;
+    }
+}
+
+/* ── MOBILE (480px and below) ── */
+@media (max-width: 480px) {
+    /* Sidebar adjustments */
+    section[data-testid="stSidebar"] {
+        width: 260px !important;
+        min-width: 260px !important;
+        max-width: 260px !important;
+    }
+
+    /* Main content */
+    [data-testid="block-container"] {
+        padding: 1rem 0.8rem 2rem !important;
+    }
+
+    /* Page header */
+    .page-header {
+        padding: 1.2rem 0 1rem;
+    }
+    .page-header h1 {
+        font-size: 1.5rem !important;
+        letter-spacing: -.4px !important;
+    }
+    .page-header-sub {
+        font-size: .85rem !important;
+    }
+
+    /* Typography adjustments */
+    h2 { font-size: 1.3rem !important; }
+    h3 { font-size: 1rem !important; }
+
+    /* Stat cards */
+    .stat-card {
+        padding: 1rem 0.8rem;
+    }
+    .stat-value {
+        font-size: 1.5rem !important;
+    }
+
+    /* Form elements */
+    .stNumberInput input,
+    .stSelectbox > div > div,
+    .stTextInput > div > div > input {
+        font-size: 14px !important;
+    }
+
+    /* Result card */
+    .result-card {
+        padding: 1.2rem 1rem;
+    }
+    .result-prob {
+        font-size: 2rem !important;
+    }
+
+    /* Disclaimer */
+    .disclaimer {
+        padding: 10px 12px;
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+    .disclaimer-icon {
+        align-self: center;
+    }
+
+    /* Submit button */
+    [data-testid="stFormSubmitButton"] button {
+        width: 100% !important;
+        font-size: 15px !important;
+    }
+
+    /* Metrics */
+    [data-testid="stMetric"] {
+        padding: .6rem .8rem !important;
+    }
+    [data-testid="stMetricValue"] {
+        font-size: 18px !important;
+    }
+
+    /* Tables */
+    .stMarkdown table {
+        font-size: 12px;
+    }
+    .stMarkdown th,
+    .stMarkdown td {
+        padding: 8px 10px !important;
+    }
+}
+
+/* ── SMALL MOBILE (360px and below) ── */
+@media (max-width: 360px) {
+    /* Further reduce sidebar */
+    section[data-testid="stSidebar"] {
+        width: 240px !important;
+        min-width: 240px !important;
+        max-width: 240px !important;
+    }
+
+    /* Main content */
+    [data-testid="block-container"] {
+        padding: 0.8rem 0.6rem 1.5rem !important;
+    }
+
+    /* Page header */
+    .page-header {
+        padding: 1rem 0 0.8rem;
+    }
+    .page-header h1 {
+        font-size: 1.3rem !important;
+    }
+
+    /* Stat cards */
+    .stat-card {
+        padding: 0.8rem 0.6rem;
+    }
+    .stat-value {
+        font-size: 1.3rem !important;
+    }
+
+    /* Result card */
+    .result-prob {
+        font-size: 1.8rem !important;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
