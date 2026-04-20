@@ -50,7 +50,7 @@ disease_prediction_project/
 │   ├── 02_preprocessing.ipynb  # Nettoyage & feature engineering
 │   ├── 03_ml_models.ipynb      # Modèles ML classiques
 │   └── 04_dl_model.ipynb       # Modèle Deep Learning
-├── scripts/
+├── src/
 │   ├── preprocess.py           # Pipeline de prétraitement
 │   ├── train_ml.py             # Entraînement ML
 │   ├── train_dl.py             # Entraînement DL
@@ -71,16 +71,16 @@ disease_prediction_project/
 pip install -r requirements.txt
 
 # 2. Prétraitement
-python scripts/preprocess.py
+python src/preprocess.py
 
 # 3. Entraîner les modèles ML
-python scripts/train_ml.py
+python src/train_ml.py
 
 # 4. Entraîner le modèle DL
-python scripts/train_dl.py
+python src/train_dl.py
 
 # 5. Évaluation
-python scripts/evaluate.py
+python src/evaluate.py
 ```
 
 ---
