@@ -58,9 +58,14 @@ _RGPD_EXCLUDED_FIELDS: frozenset[str] = frozenset()
 # ══════════════════════════════════════════════════════════════════════════════
 # CONFIG STREAMLIT
 # ══════════════════════════════════════════════════════════════════════════════
+import base64 as _base64
+from PIL import Image as _PIL_Image
+_nav_icon = _PIL_Image.open(ROOT / "\u2014Pngtree\u2014heart care  with a_3670172.png")
+with open(ROOT / "\u2014Pngtree\u2014heart care  with a_3670172.png", "rb") as _f:
+    _nav_icon_b64 = _base64.b64encode(_f.read()).decode()
 st.set_page_config(
     page_title="CardioRisk AI",
-    page_icon="🫀",
+    page_icon=_nav_icon,
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -1486,9 +1491,9 @@ def main() -> None:
     _inject_css()
 
     with st.sidebar:
-        st.markdown("""
+        st.markdown(f"""
         <div class="sb-logo">
-            <div class="sb-logo-icon">🫀</div>
+            <div class="sb-logo-icon"><img src="data:image/png;base64,{_nav_icon_b64}" style="width:40px;height:40px;object-fit:contain;"></div>
             <div class="sb-logo-text">
                 <span class="sb-logo-name">CardioRisk AI</span>
                 <span class="sb-logo-sub">Aide à la décision clinique</span>
